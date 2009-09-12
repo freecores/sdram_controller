@@ -37,7 +37,6 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 --  floor. If you want to support both sides of the 2 burst or bigger bursts, you'll need to rework this.
 entity sdram_reader is
 	port(
-		clk000 : in std_logic;
 		clk270 : in std_logic;
 		rst    : in std_logic;
 		dq     : in std_logic_vector(15 downto 0);

@@ -45,8 +45,7 @@ entity sdram_writer is
 		data_o : in std_logic_vector(7 downto 0);
 		dqs    : out std_logic_vector(1 downto 0);
 		dm     : out std_logic_vector(1 downto 0);
-		dq     : out std_logic_vector(15 downto 0);
-		done   : out std_logic
+		dq     : out std_logic_vector(15 downto 0)
 	);
 end sdram_writer;
 
@@ -95,9 +94,6 @@ architecture impl of sdram_writer is
 	
 	signal data_out : std_logic_vector(15 downto 0);
 	signal mask_out : std_logic_vector(1 downto 0);
-
-	signal writer_dqs_done : std_logic := '0';
-	signal writer_dm_done : std_logic := '0';
   
 begin
   
@@ -148,7 +144,6 @@ begin
 		if (rst = '1') then
 			dqs_fsm_r <= '0';
 			dqs_fsm_f <= '0';
-			writer_dqs_done <= '0';
 			writer_dqs_state <= STATE_WRITER_DQS_0;
 		elsif (rising_edge(clk180)) then
 			case writer_dqs_state is
@@ -163,7 +158,6 @@ begin
 				when STATE_WRITER_DQS_DONE =>
 					dqs_fsm_r <= '0';
 					dqs_fsm_f <= '0';
-					writer_dqs_done <= '1';
 					writer_dqs_state <= STATE_WRITER_DQS_DONE;
 			end case;
 		end if;
@@ -181,7 +175,6 @@ begin
 			dq_rising <= x"0000";
 			dm_falling <= "11";
 			dq_falling <= x"0000";
-			writer_dm_done <= '0';
 			writer_dm_state <= STATE_WRITER_DM_0;
 		elsif (rising_edge(clk)) then
 			case writer_dm_state is
@@ -202,12 +195,9 @@ begin
 				when STATE_WRITER_DM_DONE =>
 					dm_rising <= "00";
 					dm_falling <= "00";
-					writer_dm_done <= '1';
 					writer_dm_state <= STATE_WRITER_DM_DONE;
 			end case;
 		end if;
 	end process;
-	
-	done <= writer_dqs_done and writer_dm_done;
   
 end impl;

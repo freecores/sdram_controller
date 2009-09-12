@@ -681,14 +681,12 @@ entity inout_switch_2 is
 	port (
 		ioport : inout std_logic_vector(1 downto 0);
 		   dir : in std_logic;
-		data_o : out std_logic_vector(1 downto 0);
 		data_i : in std_logic_vector(1 downto 0)
 	);
 end inout_switch_2;
 
 architecture impl of inout_switch_2 is
 begin
-	data_o <= ioport when dir = '0' else "ZZ";
 	ioport <= data_i when dir = '1' else "ZZ";
 end impl;
 

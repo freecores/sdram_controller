@@ -57,18 +57,13 @@ architecture impl of scratch is
 	signal dram_driver_state : DRAM_DRIVER_STATES := STATE0;
 
 	signal clk_bufd  : std_logic;
-	signal clk133mhz : std_logic;
-	signal dcm_locked : std_logic;
 	
 	signal op      : std_logic_vector(1 downto 0);
 	signal addr    : std_logic_vector(25 downto 0);
 	signal op_ack  : std_logic;
 	signal busy_n  : std_logic;
-	signal data_o  : std_logic_vector(7 downto 0);
 	signal data_i  : std_logic_vector(7 downto 0);
 	signal debug   : std_logic_vector(7 downto 0);
-	
-	signal reg0 : std_logic_vector(7 downto 0) := x"55";
 	
 begin
 
@@ -119,7 +114,7 @@ begin
 					
 				when STATE1 =>
 					addr <= "01000000000000000000000111";
-					data_i <= "10101010";
+					data_i <= "11111111";
 					op <= "10";
 					if (op_ack = '1') then
 						dram_driver_state <= STATE2;

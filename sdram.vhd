@@ -131,7 +131,6 @@ architecture impl of sdram_controller is
 		port (
 			ioport : inout std_logic_vector(1 downto 0);
 				dir : in    std_logic;
-			data_o : out   std_logic_vector(1 downto 0);
 			data_i : in    std_logic_vector(1 downto 0)
 		);
 	end component;
@@ -147,7 +146,6 @@ architecture impl of sdram_controller is
 	
 	component sdram_reader is
 		port(
-			clk000 : in  std_logic;
 			clk270 : in  std_logic;
 			rst    : in  std_logic;
 			dq     : in  std_logic_vector(15 downto 0);
@@ -167,8 +165,7 @@ architecture impl of sdram_controller is
 			data_o : in  std_logic_vector(7 downto 0);
 			dqs    : out std_logic_vector(1 downto 0);
 			dm     : out std_logic_vector(1 downto 0);
-			dq     : out std_logic_vector(15 downto 0);
-			done   : out std_logic
+			dq     : out std_logic_vector(15 downto 0)
 		);
 	end component;
 
@@ -239,7 +236,6 @@ architecture impl of sdram_controller is
 	signal bank_oddr2_rising  : std_logic_vector(1 downto 0) := "00";	
 	signal addr_oddr2_rising  : std_logic_vector(12 downto 0) := "0000000000000";
 
-	signal dqs_in : std_logic_vector(1 downto 0);
 	signal dqs_out : std_logic_vector(1 downto 0);
 	signal dqs_dir : std_logic;
 
@@ -248,9 +244,7 @@ architecture impl of sdram_controller is
 	signal dq_dir : std_logic;
 
 	signal reader_rst : std_logic := '1';
-
 	signal writer_rst : std_logic := '1';
-	signal writer_done : std_logic := '0';
 
 	signal dcm_locked   : std_logic;
 	signal clk_000      : std_logic;
@@ -365,7 +359,6 @@ begin
 	port map(
 		ioport => dram_dqs,
 		dir    => dqs_dir,
-		data_o => dqs_in,
 		data_i => dqs_out
 	);
   
@@ -423,7 +416,6 @@ begin
   
 	READER: sdram_reader
 	port map(
-      clk000 => clk_000,
       clk270 => clk_270,
       rst    => reader_rst,
       dq     => dq_in,
@@ -442,11 +434,11 @@ begin
 		data_o => data_i,
 		dqs    => dqs_out,
 		dm     => dram_dm,
-		dq     => dq_out,
-		done   => writer_done
+		dq     => dq_out
 	);
 	-- end component allocs
 
+	debug_reg <= x"00";
 	dram_cs <= '0';
 	data_o <= data1_o when addr(0) = '1' else data0_o;
 	
@@ -489,9 +481,9 @@ begin
 						reader_rst <= '1';
 						if (need_ar = '1') then
 							cmd_state <= STATE_IDLE_AUTO_REFRESH;
-						elsif (op = "01") then
+						elsif (op = "01" and en = '1') then
 							cmd_state <= STATE_READ_ROW_OPEN; 
-						elsif (op = "10") then
+						elsif (op = "10" and en = '1') then
 							cmd_state <= STATE_WRITE_ROW_OPEN;
 						else
 							cmd_state <= cmd_state;
