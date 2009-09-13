@@ -30,10 +30,11 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
--- Uses ODDR2 registers to generate the required DDR signals. Don't have to be as careful with the
---  timings as with sdram_reader, but you need to be able to feed the ODDR2's within their setup
---  and hold windows. Or very very hilarious things will occur. Post-PAR simulation is good for
---  getting a feel for the (mis)timings.
+-- Uses ODDR2 registers to generate the required DDR signals. Don't have to be as
+--  careful with the timings as with sdram_reader, but you need to be able to feed
+--  the ODDR2's within their setup and hold windows. Or very very hilarious things
+--  will occur. Post-PAR simulation is good for getting a feel for the
+--  (mis)timings.
 entity sdram_writer is
 	port(
 		clk    : in std_logic;

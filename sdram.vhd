@@ -8,7 +8,8 @@
 -- Project Name: 
 -- Target Devices: Spartan3e Starter Board
 -- Tool versions:  ISE 11.2
--- Description: This is the main controller module. This is where the signals to/from the DDR SDRAM chip happen.
+-- Description: This is the main controller module. This is where the signals 
+--  to/from the DDR SDRAM chip happen.
 --  
 -- Dependencies: 
 --
@@ -26,23 +27,33 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 ---- Uncomment the following library declaration if instantiating
 ---- any Xilinx primitives in this code.
-library UNISIM;
-use UNISIM.VComponents.all;
+--library UNISIM;
+--use UNISIM.VComponents.all;
 
--- This is not meant to be a high performance controller. No fancy command scheduling, does the bare minimum to work without screwing up timing.
--- Do NOT put this controller in something mission critical! This is the creation of a guy in his bedroom, learning digital circuits.
--- Intended to be used exclusively with the Spartan3e Starter Board and targets the mt46v32m16 chip. Dunno if it will work anywhere else.
--- Uses the ODDR2 and DCM Xilinx primitives, for other FPGAs, you'll need to patch in equivalents. See sdram_support for the details.
--- I'd strongly recommend running it through a post-PAR simulation if you're porting to any other FPGA, as the timings will change on you.
--- Consumes two DCMs, runs off of the main 50mhz board clock. Could possibly consume one DCM if you want to feed it the 100mhz clock directly.
--- Has an 8bit wide datapath, moderate changes could support 16bits, 32 bits you'll have to work some. You want more than that, you'll
---  be doing brain surgery on the FSMs - good luck.
+-- This is not meant to be a high performance controller. No fancy command
+--  scheduling, does the bare minimum to work without screwing up timing.
+-- Do NOT put this controller in something mission critical! This is the creation
+--  of a guy in his bedroom, learning digital circuits.
+-- Intended to be used exclusively with the Spartan3e Starter Board and targets
+--  the mt46v32m16 chip. Dunno if it will work anywhere else.
+-- Uses the ODDR2 and DCM Xilinx primitives, for other FPGAs, you'll need to
+--  patch in equivalents. See sdram_support for the details.
+-- I'd strongly recommend running it through a post-PAR simulation if you're
+--  porting to any other FPGA, as the timings will probably change on you.
+-- Consumes two DCMs, runs off of the main 50mhz board clock. Could possibly
+--  consume one DCM if you want to feed it the 100mhz clock directly.
+-- Has an 8bit wide datapath, moderate changes could support 16bits, 32 bits
+--  you'll have to work some. You want more than that, you'll be doing brain
+--  surgery on the FSMs - good luck.
 
--- This design has been tested with the testbench only. There may be glitches hidden in here somewhere still. Consider this to be an alpha release.
+-- This design has been tested with the testbench only. There may be glitches
+--  hidden in here somewhere still. Consider this to be an alpha release.
 -- Did I mention that you shouldn't put this in anything mission critical? 
 
--- Be careful with the synthesizer settings too. Do not let the FSM extractor choose something other than one-hot. Be careful with register
---  removal.
+-- Be careful with the synthesizer settings too. Do not let the FSM extractor
+--  choose something other than one-hot. Be careful with equivalent register
+--  removal. I've rolled all synthesizer settings back to default and things
+--  seem to be OK, but pay attention to the synthesizer reports!
 
 -- TODO: implement reset signal
 entity sdram_controller is

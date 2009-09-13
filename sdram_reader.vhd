@@ -29,12 +29,15 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
--- I strongly suggest you run this in the post-PAR simulator first and then start making changes to it
---  after looking at what goes on at the post-PAR level. Don't say I didn't warn you. 
--- Why didn't I use the IDDR2 primitives? Map'nPack keeps bitching about how it won't fit into the IOBs
---  with the ODDR2 primitives. I decided the ODDR2s were more important to keep.
--- I'm just capturing the front side of the burst, and letting the back side of the burst fall on the
---  floor. If you want to support both sides of the 2 burst or bigger bursts, you'll need to rework this.
+-- I strongly suggest you run this in the post-PAR simulator first and then start
+--  making changes to it after looking at what goes on at the post-PAR level. Don't
+--  say I didn't warn you. 
+-- Why didn't I use the IDDR2 primitives? Map'nPack keeps bitching about how it
+--  won't fit into the IOBs with the ODDR2 primitives. I decided the ODDR2s were
+--  more important to keep.
+-- I'm just capturing the front side of the burst, and letting the back side of
+--  the burst fall on the floor. If you want to support both sides of the 2 burst
+--  or bigger bursts, you'll need to rework this.
 entity sdram_reader is
 	port(
 		clk270 : in std_logic;
