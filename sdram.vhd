@@ -547,7 +547,6 @@ begin
 						
 					when STATE_WRITE_ROW_OPEN =>
 						op_ack <= '1';
-						busy_n <= '0';
 						dqs_dir <= '1';
 						dq_dir <= '1';
 						cap_en <= '0';
@@ -583,7 +582,6 @@ begin
 						
 					when STATE_READ_ROW_OPEN =>
 						op_ack <= '1';
-						busy_n <= '0';
 						dqs_dir <= '0';
 						dq_dir <= '0';
 						cap_en <= '0';
