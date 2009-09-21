@@ -58,15 +58,15 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 -- TODO: implement reset signal
 entity sdram_controller is
 	port(	   -- user facing signals 
-	         clk50mhz : in  std_logic;
-               	en : in  std_logic;
-	            reset : in  std_logic;
-	               op : in  std_logic_vector(1 downto 0);        -- 00/11: NOP, 01: READ, 10: write
-	             addr : in  std_logic_vector(25 downto 0);       -- address to read/write 
-	           op_ack : out std_logic;                           -- op, addr and data_i should be captured when this goes high
-	           busy_n : out std_logic;                           -- busy when LOW, ops will be ignored until busy goes high again
-	           data_o : out std_logic_vector(7 downto 0);        -- data from read shows up here
-	           data_i : in  std_logic_vector(7 downto 0);        -- data to write needs to be here
+	         clk100mhz : in  std_logic;
+               	 en : in  std_logic;
+	             reset : in  std_logic;
+	                op : in  std_logic_vector(1 downto 0);        -- 00/11: NOP, 01: READ, 10: write
+	              addr : in  std_logic_vector(25 downto 0);       -- address to read/write 
+	            op_ack : out std_logic;                           -- op, addr and data_i should be captured when this goes high
+	            busy_n : out std_logic;                           -- busy when LOW, ops will be ignored until busy goes high again
+	            data_o : out std_logic_vector(7 downto 0);        -- data from read shows up here
+	            data_i : in  std_logic_vector(7 downto 0);        -- data to write needs to be here
 	             
 	        -- SDRAM facing signals 
 			  dram_clkp : out   std_logic;                         -- 0 deg phase 100mhz clock going out to SDRAM chip
@@ -91,7 +91,7 @@ architecture impl of sdram_controller is
 	component sdram_dcm is
 		port(
 			reset      : in  std_logic;
-			clk50mhz   : in  std_logic;
+			clk100mhz  : in  std_logic;
 			locked     : out std_logic;
 			dram_clkp  : out std_logic;
 			dram_clkn  : out std_logic;
@@ -292,13 +292,18 @@ architecture impl of sdram_controller is
 	signal data0_o : std_logic_vector(7 downto 0);
 	signal data1_o : std_logic_vector(7 downto 0);
 	
+	--
+	signal cap_en     : std_logic;
+	signal addr_save  : std_logic_vector(25 downto 0);
+	signal datai_save : std_logic_vector(7 downto 0);
+	
 begin
   
 	-- component instantiations begin here
 	DRAM_DCM: sdram_dcm
 	port map(
 		reset           => reset,
-		clk50mhz        => clk50mhz,
+		clk100mhz       => clk100mhz,
 		locked          => dcm_locked,
 		dram_clkp       => dram_clkp,
 		dram_clkn       => dram_clkn,
@@ -441,8 +446,8 @@ begin
 		clk180 => clk_180,
 		clk270 => clk_270,
 		rst    => writer_rst,
-		addr   => addr(0),
-		data_o => data_i,
+		addr   => addr_save(0),
+		data_o => datai_save,
 		dqs    => dqs_out,
 		dm     => dram_dm,
 		dq     => dq_out
@@ -451,7 +456,17 @@ begin
 
 	debug_reg <= x"00";
 	dram_cs <= '0';
-	data_o <= data1_o when addr(0) = '1' else data0_o;
+	data_o <= data1_o when addr_save(0) = '1' else data0_o;
+	
+	process (clk_000)
+	begin
+		if (rising_edge(clk_000)) then
+			if (cap_en = '1') then
+				addr_save <= addr;
+				datai_save <= data_i;
+			end if;
+		end if;
+	end process;
 	
 	-- command state machine
 	process (clk_000)
@@ -463,6 +478,7 @@ begin
 						busy_n <= '0';
 						op_ack <= '0';
 						init_reset <= '1';
+						cap_en <= '0';
 						main_sel <= '0';
 						main_cmd <= CMD_NOP;
 						main_bank <= "00";
@@ -487,14 +503,18 @@ begin
 						busy_n <= '1';
 						op_ack <= '0';
 						need_ar_rst <= '0';
+						cap_en <= '1';
 						main_sel <= '1';
 						writer_rst <= '1';
 						reader_rst <= '1';
 						if (need_ar = '1') then
+							busy_n <= '0';
 							cmd_state <= STATE_IDLE_AUTO_REFRESH;
 						elsif (op = "01" and en = '1') then
+							busy_n <= '0';
 							cmd_state <= STATE_READ_ROW_OPEN; 
 						elsif (op = "10" and en = '1') then
+							busy_n <= '0';
 							cmd_state <= STATE_WRITE_ROW_OPEN;
 						else
 							cmd_state <= cmd_state;
@@ -526,30 +546,31 @@ begin
 						end if;
 						
 					when STATE_WRITE_ROW_OPEN =>
+						op_ack <= '1';
 						busy_n <= '0';
 						dqs_dir <= '1';
 						dq_dir <= '1';
+						cap_en <= '0';
 						main_cmd <= CMD_ACTIVE;
-						main_bank <= addr(25 downto 24);
-						main_addr <= addr(23 downto 11);
+						main_bank <= addr_save(25 downto 24);
+						main_addr <= addr_save(23 downto 11);
 						cmd_state <= STATE_WRITE_WAIT_ROW_OPEN;
 						
 					when STATE_WRITE_WAIT_ROW_OPEN =>
 						main_cmd <= CMD_NOP;
-						main_bank <= addr(25 downto 24); -- timing kludge
-						main_addr <= "001" & addr(10 downto 1); -- last bit determines upper/lower byte in word
+						main_bank <= addr_save(25 downto 24); -- timing kludge
+						main_addr <= "001" & addr_save(10 downto 1); -- last bit determines upper/lower byte in word
 						cmd_state <= STATE_WRITE_ISSUE_CMD;
 					
 					when STATE_WRITE_ISSUE_CMD =>
 						writer_rst <= '0';
 						write_reco_rst <= '1';
 						main_cmd <= CMD_WRITE;
-						main_bank <= addr(25 downto 24);
-						main_addr <= "001" & addr(10 downto 1); -- last bit determines upper/lower byte in word
+						main_bank <= addr_save(25 downto 24);
+						main_addr <= "001" & addr_save(10 downto 1); -- last bit determines upper/lower byte in word
 						cmd_state <= STATE_WRITE_WAIT_RECOVER;
 						
 					when STATE_WRITE_WAIT_RECOVER =>
-						op_ack <= '1';
 						write_reco_rst <= '0';
 						main_cmd <= CMD_NOP;
 						main_bank <= "00";
@@ -561,29 +582,30 @@ begin
 						end if;
 						
 					when STATE_READ_ROW_OPEN =>
+						op_ack <= '1';
 						busy_n <= '0';
 						dqs_dir <= '0';
 						dq_dir <= '0';
+						cap_en <= '0';
 						main_cmd <= CMD_ACTIVE;
-						main_bank <= addr(25 downto 24);
-						main_addr <= addr(23 downto 11);
+						main_bank <= addr_save(25 downto 24);
+						main_addr <= addr_save(23 downto 11);
 						cmd_state <= STATE_READ_WAIT_ROW_OPEN;
 						
 					when STATE_READ_WAIT_ROW_OPEN => 
 						main_cmd <= CMD_NOP;
-						main_bank <= addr(25 downto 24); -- timing kludge
-						main_addr <= "001" & addr(10 downto 1); -- last bit determines upper/lower byte
+						main_bank <= addr_save(25 downto 24); -- timing kludge
+						main_addr <= "001" & addr_save(10 downto 1); -- last bit determines upper/lower byte
 						cmd_state <= STATE_READ_ISSUE_CMD;
 						
 					when STATE_READ_ISSUE_CMD =>
 						read_wait_rst <= '1';
 						main_cmd <= CMD_READ;
-						main_bank <= addr(25 downto 24);
-						main_addr <= "001" & addr(10 downto 1); -- last bit determines upper/lower byte
+						main_bank <= addr_save(25 downto 24);
+						main_addr <= "001" & addr_save(10 downto 1); -- last bit determines upper/lower byte
 						cmd_state <= STATE_READ_WAIT_CAPTURE;
 						
 					when STATE_READ_WAIT_CAPTURE =>
-						op_ack <= '1';
 						read_wait_rst <= '0';
 						reader_rst <= '0';
 						main_cmd <= CMD_NOP;

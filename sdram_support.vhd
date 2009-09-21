@@ -114,7 +114,7 @@ use UNISIM.VComponents.all;
 entity sdram_dcm is
 	port(
 	   reset           : in  std_logic;
-		clk50mhz        : in  std_logic;
+		clk100mhz       : in  std_logic;
 		locked          : out std_logic;
 		dram_clkp       : out std_logic;
 		dram_clkn       : out std_logic;
@@ -127,12 +127,6 @@ end sdram_dcm;
 
 architecture impl of sdram_dcm is
 
-	signal dcm0_locked      : std_logic;
-	signal dcm0_clk_raw_000 : std_logic;
-	signal dcm0_clk_000     : std_logic;
-	signal dcm0_clk_fxr_000 : std_logic;
-	signal dcm0_clk_fx_000  : std_logic;
-
 	signal dcm1_reset       : std_logic;
 	signal dcm1_locked      : std_logic;
 	signal dcm1_clk_raw_000 : std_logic;
@@ -143,57 +137,8 @@ architecture impl of sdram_dcm is
 	signal dcm1_clk_270     : std_logic;
 	
 begin
-
-	SDRAM_DCM0 : DCM_SP
-   generic map (
-      CLKDV_DIVIDE => 2.0,                   --  Divide by: 1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5
-                                             --     7.0,7.5,8.0,9.0,10.0,11.0,12.0,13.0,14.0,15.0 or 16.0
-      CLKFX_DIVIDE => 2,                     --  Can be any integer from 1 to 32 
-      CLKFX_MULTIPLY => 4,                   --  Can be any integer from 1 to 32
-      CLKIN_DIVIDE_BY_2 => FALSE,            --  TRUE/FALSE to enable CLKIN divide by two feature
-      CLKIN_PERIOD => 20.0,                  --  Specify period of input clock
-      CLKOUT_PHASE_SHIFT => "NONE",          --  Specify phase shift of "NONE", "FIXED" or "VARIABLE" 
-      CLK_FEEDBACK => "1X",                  --  Specify clock feedback of "NONE", "1X" or "2X" 
-      DESKEW_ADJUST => "SOURCE_SYNCHRONOUS", -- "SOURCE_SYNCHRONOUS", "SYSTEM_SYNCHRONOUS" or
-                                             --     an integer from 0 to 15
-      DLL_FREQUENCY_MODE => "LOW",           -- "HIGH" or "LOW" frequency mode for DLL
-      DUTY_CYCLE_CORRECTION => TRUE,         --  Duty cycle correction, TRUE or FALSE
-      PHASE_SHIFT => 0,                      --  Amount of fixed phase shift from -255 to 255
-      STARTUP_WAIT => FALSE)                 --  Delay configuration DONE until DCM_SP LOCK, TRUE/FALSE
-   port map (
-      CLK0     => dcm0_clk_raw_000,   -- 0 degree DCM CLK ouptput
-      CLK90    => open,               -- 90 degree DCM CLK output
-      CLK180   => open,               -- 180 degree DCM CLK output
-      CLK270   => open,               -- 270 degree DCM CLK output
-      CLK2X    => open,               -- 2X DCM CLK output
-      CLK2X180 => open,               -- 2X, 180 degree DCM CLK out
-      CLKDV    => open,               -- Divided DCM CLK out (CLKDV_DIVIDE)
-      CLKFX    => dcm0_clk_fxr_000,   -- DCM CLK synthesis out (M/D) 
-      CLKFX180 => open,               -- 180 degree CLK synthesis out
-      LOCKED   => dcm0_locked,        -- DCM LOCK status output (means feedback is in phase with main clock)
-      PSDONE   => open,               -- Dynamic phase adjust done output
-      STATUS   => open,               -- 8-bit DCM status bits output
-      CLKFB    => dcm0_clk_000,       -- DCM clock feedback
-      CLKIN    => clk50mhz,           -- Clock input (from IBUFG, BUFG or DCM)
-      PSCLK    => '0',                -- Dynamic phase adjust clock input
-      PSEN     => '0',                -- Dynamic phase adjust enable input
-      PSINCDEC => '0',                -- Dynamic phase adjust increment/decrement
-      RST      => reset               -- DCM asynchronous reset input
-   );	
 	
-	BUFG_DCM0_000 : BUFG
-   port map (
-      O => dcm0_clk_000,      -- Clock buffer output
-      I => dcm0_clk_raw_000   -- Clock buffer input
-   );
-
-	BUFG_DCM0_FX_000 : BUFG
-   port map (
-      O => dcm0_clk_fx_000,   -- Clock buffer output
-      I => dcm0_clk_fxr_000   -- Clock buffer input
-   );
-	
-	SDRAM_DCM1 : DCM_SP
+	SDRAM_DCM : DCM_SP
    generic map (
       CLKDV_DIVIDE => 2.0,                   --  Divide by: 1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5
                                              --     7.0,7.5,8.0,9.0,10.0,11.0,12.0,13.0,14.0,15.0 or 16.0
@@ -223,7 +168,7 @@ begin
       PSDONE   => open,                  -- Dynamic phase adjust done output
       STATUS   => open,                  -- 8-bit DCM status bits output
       CLKFB    => dcm1_clk_000,          -- DCM clock feedback
-      CLKIN    => dcm0_clk_fx_000,       -- Clock input (from IBUFG, BUFG or DCM)
+      CLKIN    => clk100mhz,             -- Clock input (from IBUFG, BUFG or DCM)
       PSCLK    => '0',                   -- Dynamic phase adjust clock input
       PSEN     => '0',                   -- Dynamic phase adjust enable input
       PSINCDEC => '0',                   -- Dynamic phase adjust increment/decrement
@@ -278,7 +223,7 @@ begin
       S => '0'                   -- 1-bit set input
    );	
 	
-	locked <= dcm0_locked and dcm1_locked;
+	locked <= dcm1_locked;
 	
 	clk_000 <= dcm1_clk_000;
 	clk_090 <= dcm1_clk_090;
