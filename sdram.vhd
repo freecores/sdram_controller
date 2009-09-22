@@ -458,30 +458,14 @@ begin
 	dram_cs <= '0';
 	data_o <= data1_o when addr_save(0) = '1' else data0_o;
 	
-	-- capture the addr when op is captured by cmd fsm
+	-- capture addr, data_i and op for the cmd fsm
+	-- op needs capture during AR or it might get dropped
 	process (clk_000)
 	begin
 		if (rising_edge(clk_000)) then
 			if (cap_en = '1') then
 				addr_save <= addr;
-			end if;
-		end if;
-	end process;
-	
-	-- capture data_i when op is captured by cmd fsm
-	process (clk_000)
-	begin
-		if (rising_edge(clk_000)) then
-			if (cap_en = '1') then
 				datai_save <= data_i;
-			end if;
-		end if;
-	end process;
-	
-	process (clk_000)
-	begin
-		if (rising_edge(clk_000)) then
-			if (cap_en = '1') then
 				op_save <= op;
 			end if;
 		end if;
