@@ -40,14 +40,13 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 --  patch in equivalents. See sdram_support for the details.
 -- I'd strongly recommend running it through a post-PAR simulation if you're
 --  porting to any other FPGA, as the timings will probably change on you.
--- Consumes two DCMs, runs off of the main 50mhz board clock. Could possibly
---  consume one DCM if you want to feed it the 100mhz clock directly.
+-- Consumes one DCM, needs a 100mhz clock or an external DCM to supply it.
 -- Has an 8bit wide datapath, moderate changes could support 16bits, 32 bits
 --  you'll have to work some. You want more than that, you'll be doing brain
 --  surgery on the FSMs - good luck.
 
--- This design has been tested with the testbench only. There may be glitches
---  hidden in here somewhere still. Consider this to be an alpha release.
+-- This design has now been tested with a t80 soft cpu, however, it hasn't been
+--  exhaustively tested with the rest of the system. Glitches may still exist.
 -- Did I mention that you shouldn't put this in anything mission critical? 
 
 -- Be careful with the synthesizer settings too. Do not let the FSM extractor
@@ -221,7 +220,7 @@ architecture impl of sdram_controller is
 	end component;
 	-- component decls end here
 	
-	-- DRAM commands - <we,cas,ras>
+	-- DRAM commands - <we_n,cas_n,ras_n>
 	constant CMD_NOP        : std_logic_vector(2 downto 0)  := "111";
 	constant CMD_ACTIVE     : std_logic_vector(2 downto 0)  := "110"; -- opens a row within a bank
 	constant CMD_READ       : std_logic_vector(2 downto 0)  := "101";
@@ -233,13 +232,13 @@ architecture impl of sdram_controller is
 	
 	-- various wait counter values
 	constant AUTO_REFRESH_CLKS  : integer := 700; -- spec says 7.8us, which is 780 clocks @ 100Mhz, I'm setting it to 700
-	constant WRITE_RECOVER_CLKS : integer := 5;   -- these are fudged a bit, you *might* be able to shave a clock or two off
+	constant WRITE_RECOVER_CLKS : integer := 6;   -- these are fudged a bit, you *might* be able to shave a clock or two off
 	constant READ_DONE_CLKS     : integer := 5;
 
-	type CMD_STATES is ( STATE_START, STATE_INIT, STATE_WAIT_INIT, STATE_IDLE, STATE_IDLE_AUTO_REFRESH, STATE_IDLE_WAIT_AR_CTR,
-								STATE_IDLE_WAIT_AUTO_REFRESH, STATE_WRITE_ROW_OPEN, STATE_WRITE_WAIT_ROW_OPEN, STATE_WRITE_ISSUE_CMD,
-								STATE_WRITE_WAIT_RECOVER, STATE_READ_ROW_OPEN, STATE_READ_WAIT_ROW_OPEN, STATE_READ_ISSUE_CMD,
-								STATE_READ_WAIT_CAPTURE );
+	type CMD_STATES is ( STATE_START, STATE_INIT, STATE_WAIT_INIT, STATE_IDLE, STATE_IDLE_AUTO_REFRESH, 
+	                     STATE_IDLE_CHECK_OP_PENDING, STATE_IDLE_WAIT_AR_CTR, STATE_IDLE_WAIT_AUTO_REFRESH,
+								STATE_WRITE_ROW_OPEN, STATE_WRITE_WAIT_ROW_OPEN, STATE_WRITE_ISSUE_CMD, STATE_WRITE_WAIT_RECOVER,
+								STATE_READ_ROW_OPEN, STATE_READ_WAIT_ROW_OPEN, STATE_READ_ISSUE_CMD, STATE_READ_WAIT_CAPTURE );
 
 	signal cmd_state : CMD_STATES := STATE_START;
 
@@ -292,8 +291,9 @@ architecture impl of sdram_controller is
 	signal data0_o : std_logic_vector(7 downto 0);
 	signal data1_o : std_logic_vector(7 downto 0);
 	
-	--
+	-- capture signals
 	signal cap_en     : std_logic;
+	signal op_save    : std_logic_vector(1 downto 0);
 	signal addr_save  : std_logic_vector(25 downto 0);
 	signal datai_save : std_logic_vector(7 downto 0);
 	
@@ -458,12 +458,31 @@ begin
 	dram_cs <= '0';
 	data_o <= data1_o when addr_save(0) = '1' else data0_o;
 	
+	-- capture the addr when op is captured by cmd fsm
 	process (clk_000)
 	begin
 		if (rising_edge(clk_000)) then
 			if (cap_en = '1') then
 				addr_save <= addr;
+			end if;
+		end if;
+	end process;
+	
+	-- capture data_i when op is captured by cmd fsm
+	process (clk_000)
+	begin
+		if (rising_edge(clk_000)) then
+			if (cap_en = '1') then
 				datai_save <= data_i;
+			end if;
+		end if;
+	end process;
+	
+	process (clk_000)
+	begin
+		if (rising_edge(clk_000)) then
+			if (cap_en = '1') then
+				op_save <= op;
 			end if;
 		end if;
 	end process;
@@ -502,25 +521,31 @@ begin
 						-- this is where reads and writes return to after being completed
 						busy_n <= '1';
 						op_ack <= '0';
+						cap_en <= '0';
 						need_ar_rst <= '0';
-						cap_en <= '1';
 						main_sel <= '1';
 						writer_rst <= '1';
 						reader_rst <= '1';
+						cap_en <= '1';
 						if (need_ar = '1') then
 							busy_n <= '0';
 							cmd_state <= STATE_IDLE_AUTO_REFRESH;
-						elsif (op = "01" and en = '1') then
+						elsif (op = "01") then
 							busy_n <= '0';
+							op_ack <= '1';
 							cmd_state <= STATE_READ_ROW_OPEN; 
-						elsif (op = "10" and en = '1') then
+						elsif (op = "10") then
 							busy_n <= '0';
+							op_ack <= '1';
 							cmd_state <= STATE_WRITE_ROW_OPEN;
 						else
 							cmd_state <= cmd_state;
 						end if;					
 
 					when STATE_IDLE_AUTO_REFRESH =>
+						if (op = "01" or op = "10") then
+							cap_en <= '0';
+						end if;
 						need_ar_rst <= '1';
 						wait_ar_rst <= '1';
 						main_cmd <= CMD_AUTO_REFR;
@@ -529,6 +554,9 @@ begin
 						cmd_state <= STATE_IDLE_WAIT_AR_CTR;
 
 					when STATE_IDLE_WAIT_AR_CTR =>
+						if (op = "01" or op = "10") then
+							cap_en <= '0';
+						end if;
 						wait_ar_rst <= '0';
 						main_cmd <= CMD_NOP;
 						main_bank <= "00";
@@ -536,20 +564,33 @@ begin
 						cmd_state <= STATE_IDLE_WAIT_AUTO_REFRESH;
 						
 					when STATE_IDLE_WAIT_AUTO_REFRESH =>
+						if (op = "01" or op = "10") then
+							cap_en <= '0';
+						end if;
 						main_cmd <= CMD_NOP;
 						main_bank <= "00";
 						main_addr <= "0000000000000";
 						if (wait_ar_done = '1') then
-							cmd_state <= STATE_IDLE; 
+							cmd_state <= STATE_IDLE_CHECK_OP_PENDING; 
 						else
 							cmd_state <= cmd_state;
 						end if;
 						
+					when STATE_IDLE_CHECK_OP_PENDING =>
+						if (op_save = "01") then
+							op_ack <= '1';
+							cmd_state <= STATE_READ_ROW_OPEN; 
+						elsif (op_save = "10") then
+							op_ack <= '1';
+							cmd_state <= STATE_WRITE_ROW_OPEN;
+						else
+							cmd_state <= STATE_IDLE;
+						end if;
+						
 					when STATE_WRITE_ROW_OPEN =>
-						op_ack <= '1';
+						cap_en <= '0';
 						dqs_dir <= '1';
 						dq_dir <= '1';
-						cap_en <= '0';
 						main_cmd <= CMD_ACTIVE;
 						main_bank <= addr_save(25 downto 24);
 						main_addr <= addr_save(23 downto 11);
@@ -581,10 +622,9 @@ begin
 						end if;
 						
 					when STATE_READ_ROW_OPEN =>
-						op_ack <= '1';
+						cap_en <= '0';
 						dqs_dir <= '0';
 						dq_dir <= '0';
-						cap_en <= '0';
 						main_cmd <= CMD_ACTIVE;
 						main_bank <= addr_save(25 downto 24);
 						main_addr <= addr_save(23 downto 11);
