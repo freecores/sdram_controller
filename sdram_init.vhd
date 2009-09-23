@@ -61,7 +61,7 @@ architecture impl of sdram_init is
 	constant CMD_AUTO_REFR  : std_logic_vector(2 downto 0)  := "100";
 	constant CMD_LOAD_MR    : std_logic_vector(2 downto 0)  := "000";
 		
-	constant CLKS_200US         : integer := 21000; -- well, it's supposed to be 20000, but i'm fudging with 21000
+	constant CLKS_200US         : integer := 30000; -- well, it's supposed to be 20000, but i'm fudging
 
 	type INIT_STATES is ( STATE_START, STATE_WAIT200US, STATE_CLKE, STATE_PRECHARGE_ALL0, STATE_WAIT_PRECHARGE_ALL0, STATE_LOAD_MRE,
 	                      STATE_WAIT_MRE, STATE_LOAD_MRN, STATE_WAIT_MRN, STATE_PRECHARGE_ALL1, STATE_WAIT_PRECHARGE_ALL1, STATE_AUTO_REFRESH0,

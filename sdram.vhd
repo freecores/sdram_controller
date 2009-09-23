@@ -232,7 +232,7 @@ architecture impl of sdram_controller is
 	
 	-- various wait counter values
 	constant AUTO_REFRESH_CLKS  : integer := 700; -- spec says 7.8us, which is 780 clocks @ 100Mhz, I'm setting it to 700
-	constant WRITE_RECOVER_CLKS : integer := 6;   -- these are fudged a bit, you *might* be able to shave a clock or two off
+	constant WRITE_RECOVER_CLKS : integer := 5;   -- these are fudged a bit, you *might* be able to shave a clock or two off
 	constant READ_DONE_CLKS     : integer := 5;
 
 	type CMD_STATES is ( STATE_START, STATE_INIT, STATE_WAIT_INIT, STATE_IDLE, STATE_IDLE_AUTO_REFRESH, 
@@ -459,7 +459,7 @@ begin
 	data_o <= data1_o when addr_save(0) = '1' else data0_o;
 	
 	-- capture addr, data_i and op for the cmd fsm
-	-- op needs capture during AR or it might get dropped
+	-- op needs to be captured during AR or it might get dropped
 	process (clk_000)
 	begin
 		if (rising_edge(clk_000)) then
