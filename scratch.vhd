@@ -56,7 +56,11 @@ architecture impl of scratch is
 	type DRAM_DRIVER_STATES is ( STATE0, STATE1, STATE2, STATE3, STATE4, STATE5 );
 	signal dram_driver_state : DRAM_DRIVER_STATES := STATE0;
 
-	signal clk_bufd  : std_logic;
+	signal clk_bufd        : std_logic;
+	signal clk100mhz       : std_logic;
+	signal dcm_locked      : std_logic;
+	signal dcm_clk_000     : std_logic;
+	signal dcm_clk_raw_000 : std_logic;
 	
 	signal op      : std_logic_vector(1 downto 0);
 	signal addr    : std_logic_vector(25 downto 0);
@@ -73,9 +77,52 @@ begin
 		I => clk
 	);
 	
+	TB_DCM : DCM_SP
+   generic map (
+      CLKDV_DIVIDE => 2.0,                   --  Divide by: 1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5
+                                             --     7.0,7.5,8.0,9.0,10.0,11.0,12.0,13.0,14.0,15.0 or 16.0
+      CLKFX_DIVIDE => 2,                     --  Can be any integer from 1 to 32 
+      CLKFX_MULTIPLY => 2,                   --  Can be any integer from 1 to 32
+      CLKIN_DIVIDE_BY_2 => FALSE,            --  TRUE/FALSE to enable CLKIN divide by two feature
+      CLKIN_PERIOD => 10.0,                  --  Specify period of input clock
+      CLKOUT_PHASE_SHIFT => "NONE",          --  Specify phase shift of "NONE", "FIXED" or "VARIABLE" 
+      CLK_FEEDBACK => "1X",                  --  Specify clock feedback of "NONE", "1X" or "2X" 
+      DESKEW_ADJUST => "SOURCE_SYNCHRONOUS", -- "SOURCE_SYNCHRONOUS", "SYSTEM_SYNCHRONOUS" or
+                                             --     an integer from 0 to 15
+      DLL_FREQUENCY_MODE => "LOW",           -- "HIGH" or "LOW" frequency mode for DLL
+      DUTY_CYCLE_CORRECTION => TRUE,         --  Duty cycle correction, TRUE or FALSE
+      PHASE_SHIFT => 0,                      --  Amount of fixed phase shift from -255 to 255
+      STARTUP_WAIT => FALSE)                 --  Delay configuration DONE until DCM_SP LOCK, TRUE/FALSE
+   port map (
+      CLK0     => dcm_clk_raw_000,       -- 0 degree DCM CLK ouptput
+      CLK90    => open,                  -- 90 degree DCM CLK output
+      CLK180   => open,                  -- 180 degree DCM CLK output
+      CLK270   => open,                  -- 270 degree DCM CLK output
+      CLK2X    => clk100mhz,             -- 2X DCM CLK output
+      CLK2X180 => open,                  -- 2X, 180 degree DCM CLK out
+      CLKDV    => open,                  -- Divided DCM CLK out (CLKDV_DIVIDE)
+      CLKFX    => open,                  -- DCM CLK synthesis out (M/D) 
+      CLKFX180 => open,                  -- 180 degree CLK synthesis out
+      LOCKED   => dcm_locked,            -- DCM LOCK status output (means feedback is in phase with main clock)
+      PSDONE   => open,                  -- Dynamic phase adjust done output
+      STATUS   => open,                  -- 8-bit DCM status bits output
+      CLKFB    => dcm_clk_000,           -- DCM clock feedback
+      CLKIN    => clk_bufd,              -- Clock input (from IBUFG, BUFG or DCM)
+      PSCLK    => '0',                   -- Dynamic phase adjust clock input
+      PSEN     => '0',                   -- Dynamic phase adjust enable input
+      PSINCDEC => '0',                   -- Dynamic phase adjust increment/decrement
+      RST      => '0'                    -- DCM asynchronous reset input
+   );	
+	
+	DCM_BUF_000: BUFG
+	port map(
+		O => dcm_clk_000,
+		I => dcm_clk_raw_000
+	);
+	
 	SDRAM: entity work.sdram_controller 
 	port map(
-		clk50mhz => clk_bufd,
+		clk100mhz => clk100mhz,
 		en => '1',
 	   reset => rst,
 	   op => op,
@@ -113,8 +160,8 @@ begin
 					end if;
 					
 				when STATE1 =>
-					addr <= "01000000000000000000000111";
-					data_i <= "11111111";
+					addr <= "0000000000"& x"6001";
+					data_i <= "11110001";
 					op <= "10";
 					if (op_ack = '1') then
 						dram_driver_state <= STATE2;
@@ -127,7 +174,7 @@ begin
 					end if;
 					
 				when STATE3 =>
-					addr <= "01000000000000000000000111";
+					addr <= "0000000000" & x"6001";
 					op <= "01";
 					if (op_ack = '1') then
 						dram_driver_state <= STATE4;
