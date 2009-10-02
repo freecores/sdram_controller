@@ -84,7 +84,7 @@ begin
       CLKFX_DIVIDE => 2,                     --  Can be any integer from 1 to 32 
       CLKFX_MULTIPLY => 2,                   --  Can be any integer from 1 to 32
       CLKIN_DIVIDE_BY_2 => FALSE,            --  TRUE/FALSE to enable CLKIN divide by two feature
-      CLKIN_PERIOD => 10.0,                  --  Specify period of input clock
+      CLKIN_PERIOD => 20.0,                  --  Specify period of input clock
       CLKOUT_PHASE_SHIFT => "NONE",          --  Specify phase shift of "NONE", "FIXED" or "VARIABLE" 
       CLK_FEEDBACK => "1X",                  --  Specify clock feedback of "NONE", "1X" or "2X" 
       DESKEW_ADJUST => "SOURCE_SYNCHRONOUS", -- "SOURCE_SYNCHRONOUS", "SYSTEM_SYNCHRONOUS" or
