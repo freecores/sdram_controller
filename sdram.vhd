@@ -505,7 +505,6 @@ begin
 						-- this is where reads and writes return to after being completed
 						busy_n <= '1';
 						op_ack <= '0';
-						cap_en <= '0';
 						need_ar_rst <= '0';
 						main_sel <= '1';
 						writer_rst <= '1';
