@@ -233,7 +233,7 @@ architecture impl of sdram_controller is
 	-- various wait counter values
 	constant AUTO_REFRESH_CLKS  : integer := 700; -- spec says 7.8us, which is 780 clocks @ 100Mhz, I'm setting it to 700
 	constant WRITE_RECOVER_CLKS : integer := 5;   -- these are fudged a bit, you *might* be able to shave a clock or two off
-	constant READ_DONE_CLKS     : integer := 5;
+	constant READ_DONE_CLKS     : integer := 4;   --  or shave a clock or two off if your board timing is a bit wedgy
 
 	type CMD_STATES is ( STATE_START, STATE_INIT, STATE_WAIT_INIT, STATE_IDLE, STATE_IDLE_AUTO_REFRESH, 
 	                     STATE_IDLE_CHECK_OP_PENDING, STATE_IDLE_WAIT_AR_CTR, STATE_IDLE_WAIT_AUTO_REFRESH,
@@ -458,18 +458,26 @@ begin
 	dram_cs <= '0';
 	data_o <= data1_o when addr_save(0) = '1' else data0_o;
 	
+--	process (clk_000)
+--	begin
+--		if (cap_en = '1') then
+--			if (rising_edge(clk_000)) then
+--				addr_save <= addr;
+--				datai_save <= data_i;
+--				op_save <= op;
+--			end if;
+--		end if;
+--	end process;
+
+	-- this will probably make the synthesizer scream bloody murder
+	-- over either a transparent latch or gated clock or both
+	-- but i've got it working again with my SoC and I'll see about
+	-- changing it back to something less icky later
 	-- capture addr, data_i and op for the cmd fsm
 	-- op needs to be captured during AR or it might get dropped
-	process (clk_000)
-	begin
-		if (rising_edge(clk_000)) then
-			if (cap_en = '1') then
-				addr_save <= addr;
-				datai_save <= data_i;
-				op_save <= op;
-			end if;
-		end if;
-	end process;
+	addr_save  <= addr   when cap_en = '1' else addr_save;
+	datai_save <= data_i when cap_en = '1' else datai_save;
+	op_save    <= op     when cap_en = '1' else op_save;
 	
 	-- command state machine
 	process (clk_000)
@@ -516,10 +524,12 @@ begin
 						elsif (op = "01") then
 							busy_n <= '0';
 							op_ack <= '1';
+							cap_en <= '0';
 							cmd_state <= STATE_READ_ROW_OPEN; 
 						elsif (op = "10") then
 							busy_n <= '0';
 							op_ack <= '1';
+							cap_en <= '0';
 							cmd_state <= STATE_WRITE_ROW_OPEN;
 						else
 							cmd_state <= cmd_state;
@@ -560,18 +570,21 @@ begin
 						end if;
 						
 					when STATE_IDLE_CHECK_OP_PENDING =>
-						if (op_save = "01") then
-							op_ack <= '1';
-							cmd_state <= STATE_READ_ROW_OPEN; 
-						elsif (op_save = "10") then
-							op_ack <= '1';
-							cmd_state <= STATE_WRITE_ROW_OPEN;
+						if ( cap_en = '0') then
+							if    (op_save = "01") then
+								op_ack <= '1';
+								cmd_state <= STATE_READ_ROW_OPEN; 
+							elsif (op_save = "10") then
+								op_ack <= '1';
+								cmd_state <= STATE_WRITE_ROW_OPEN;
+							else
+								cmd_state <= STATE_IDLE;
+							end if;
 						else
 							cmd_state <= STATE_IDLE;
 						end if;
 						
 					when STATE_WRITE_ROW_OPEN =>
-						cap_en <= '0';
 						dqs_dir <= '1';
 						dq_dir <= '1';
 						main_cmd <= CMD_ACTIVE;
@@ -605,7 +618,6 @@ begin
 						end if;
 						
 					when STATE_READ_ROW_OPEN =>
-						cap_en <= '0';
 						dqs_dir <= '0';
 						dq_dir <= '0';
 						main_cmd <= CMD_ACTIVE;
