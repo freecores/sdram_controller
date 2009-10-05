@@ -473,6 +473,7 @@ begin
 	-- over either a transparent latch or gated clock or both
 	-- but i've got it working again with my SoC and I'll see about
 	-- changing it back to something less icky later
+	--
 	-- capture addr, data_i and op for the cmd fsm
 	-- op needs to be captured during AR or it might get dropped
 	addr_save  <= addr   when cap_en = '1' else addr_save;
