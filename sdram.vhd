@@ -458,27 +458,18 @@ begin
 	dram_cs <= '0';
 	data_o <= data1_o when addr_save(0) = '1' else data0_o;
 	
---	process (clk_000)
---	begin
---		if (cap_en = '1') then
---			if (rising_edge(clk_000)) then
---				addr_save <= addr;
---				datai_save <= data_i;
---				op_save <= op;
---			end if;
---		end if;
---	end process;
-
-	-- this will probably make the synthesizer scream bloody murder
-	-- over either a transparent latch or gated clock or both
-	-- but i've got it working again with my SoC and I'll see about
-	-- changing it back to something less icky later
-	--
 	-- capture addr, data_i and op for the cmd fsm
 	-- op needs to be captured during AR or it might get dropped
-	addr_save  <= addr   when cap_en = '1' else addr_save;
-	datai_save <= data_i when cap_en = '1' else datai_save;
-	op_save    <= op     when cap_en = '1' else op_save;
+	process (clk_000)
+	begin
+		if (cap_en = '1') then
+			if (rising_edge(clk_000)) then
+				addr_save <= addr;
+				datai_save <= data_i;
+				op_save <= op;
+			end if;
+		end if;
+	end process;
 	
 	-- command state machine
 	process (clk_000)
