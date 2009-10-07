@@ -58,7 +58,6 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity sdram_controller is
 	port(	   -- user facing signals 
 	         clk100mhz : in  std_logic;
-               	 en : in  std_logic;
 	             reset : in  std_logic;
 	                op : in  std_logic_vector(1 downto 0);        -- 00/11: NOP, 01: READ, 10: write
 	              addr : in  std_logic_vector(25 downto 0);       -- address to read/write 
@@ -460,7 +459,7 @@ begin
 	
 	-- capture addr, data_i and op for the cmd fsm
 	-- op needs to be captured during AR or it might get dropped
-	process (clk_000)
+	process (clk_000,cap_en)
 	begin
 		if (cap_en = '1') then
 			if (rising_edge(clk_000)) then
