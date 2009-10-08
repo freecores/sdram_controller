@@ -159,28 +159,26 @@ begin
 					end if;
 					
 				when STATE1 =>
+					op <= "10";
 					addr <= "0000000000"& x"6001";
 					data_i <= "11110001";
-					op <= "10";
 					if (op_ack = '1') then
 						dram_driver_state <= STATE2;
 					end if;
 					
 				when STATE2 =>
-					op <= "00";
 					if (busy_n = '1') then
 						dram_driver_state <= STATE3;
 					end if;
 					
 				when STATE3 =>
-					addr <= "0000000000" & x"6001";
 					op <= "01";
+					addr <= "0000000000" & x"6001";
 					if (op_ack = '1') then
 						dram_driver_state <= STATE4;
 					end if;
 					
 				when STATE4 =>
-					op <= "00";
 					if (busy_n = '1') then
 						dram_driver_state <= STATE5;
 					end if;
