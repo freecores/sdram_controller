@@ -123,7 +123,6 @@ begin
 	SDRAM: entity work.sdram_controller 
 	port map(
 		clk100mhz => clk100mhz,
-		en => '1',
 	   reset => rst,
 	   op => op,
 	   addr => addr,
