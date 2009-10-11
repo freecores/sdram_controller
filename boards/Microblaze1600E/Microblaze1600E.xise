@@ -78,7 +78,6 @@
     <property xil_pn:name="Speed Grade" xil_pn:value="-4"/>
     <property xil_pn:name="Synthesis Tool" xil_pn:value="XST (VHDL/Verilog)"/>
     <property xil_pn:name="Top-Level Source Type" xil_pn:value="HDL"/>
-    <property xil_pn:name="Working Directory" xil_pn:value="C:/FPGA/sdram_controller/trunk/boards/Microblaze1600E"/>
   </properties>
 
   <bindings/>
